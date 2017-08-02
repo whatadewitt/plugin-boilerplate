@@ -133,7 +133,7 @@ class PluginName {
 	}
 
 	public function set_plugin_update_message() {
-    $output = '<br /><br /><strong>Please update the update flow detailed here for updating this plugin.</strong>';
+    $output = '<br /><br /><strong>Please use the update flow detailed here for updating this plugin.</strong>';
     return print $output;
 	}
 
