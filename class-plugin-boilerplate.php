@@ -33,6 +33,8 @@ class PluginName {
 	*/
 	// TODO: Update to the base plugin file...
 	private $plugin_file = 'plugin-boilerplate.php';
+	private $plugin_folder = false;
+	private $plugin_slug = false;
 
 	/**
 	* Refers to the Github repo of the plugin.
@@ -65,7 +67,7 @@ class PluginName {
 	* @since     1.0.0
 	* @return    PluginName    A single instance of this class.
 	*/
-	public function get_instance() {
+	public static function get_instance() {
 
 		// If the single instance hasn't been set, set it now.
 		if ( null == self::$instance ) {
@@ -110,8 +112,9 @@ class PluginName {
     add_filter( 'upgrader_post_install', array( $this, 'plugin_post_install' ), 10, 3 );
 		
 		// update message for plugins
-		$folder = basename( dirname( __FILE__ ) );
-		add_filter ( "in_plugin_update_message-{$folder}/{$plugin_file}", array( $this, 'set_plugin_update_message' ) );
+		$this->plugin_folder = basename( dirname( __FILE__ ) );
+		$this->plugin_slug = "{$this->plugin_folder}/{$this->plugin_file}";
+		add_filter ( "in_plugin_update_message-{$folder}/{$this->plugin_file}", array( $this, 'set_plugin_update_message' ) );
 
 		/*
 		 * TODO:
@@ -130,7 +133,7 @@ class PluginName {
 	}
 
 	public function set_plugin_update_message() {
-    $output = '<strong>Please update the update flow detailed here for updating this plugin.</strong>';
+    $output = '<br /><br /><strong>Please update the update flow detailed here for updating this plugin.</strong>';
     return print $output;
 	}
 
@@ -141,11 +144,11 @@ class PluginName {
 		}
 
 		// Query the GitHub API
-		$url = "https://api.github.com/repos/ShawONEX/{$repo}/releases";
+		$url = "https://api.github.com/repos/ShawONEX/{$this->repo}/releases";
 
 		// We need the access token for private repos
-		if ( !empty( $accessToken ) ) {
-			$url = add_query_arg( array( 'access_token' => $accessToken ), $url );
+		if ( !empty( $this->access_token ) ) {
+			$url = add_query_arg( array( 'access_token' => $this->access_token ), $url );
 		}
 
 		// Get the results
@@ -170,7 +173,7 @@ class PluginName {
 		$this->get_repo_release_info();
 
 		// Check the versions if we need to do an update
-		$doUpdate = version_compare( $this->api_result->tag_name, $transient->checked[$this->slug] );
+		$doUpdate = version_compare( $this->api_result->tag_name, $transient->checked[$this->plugin_slug] );
 
 		// Update the transient to include our updated plugin data
 		if ( $doUpdate == 1 ) {
@@ -180,16 +183,16 @@ class PluginName {
 			// $package = $this->api_result->zipball_url;
 
 			// // Include the access token for private GitHub repos
-			// if ( !empty( $this->accessToken ) ) {
-			// 	$package = add_query_arg( array( "access_token" => $this->accessToken ), $package );
+			// if ( !empty( $this->this->access_token ) ) {
+			// 	$package = add_query_arg( array( "access_token" => $this->this->access_token ), $package );
 			// }
 
 			$obj = new stdClass();
-			$obj->slug = $this->slug;
+			$obj->slug = $this->plugin_slug;
 			$obj->new_version = $this->api_result->tag_name;
-			$obj->url = $this->pluginData['PluginURI'];
+			$obj->url = $this->plugin_data['PluginURI'];
 			$obj->package = false; // $package;
-			$transient->response[$this->slug] = $obj;
+			$transient->response[$this->plugin_slug] = $obj;
 		}
 
 		return $transient;
@@ -202,27 +205,27 @@ class PluginName {
 		// If nothing is found, do nothing
 		if ( 
 			empty( $response->slug ) 
-			|| $response->slug != $this->slug 
+			|| $response->slug != $this->plugin_slug 
 		) {
 			return false;
 		}
 
 		// Add our plugin information
 		$response->last_updated = $this->api_result->published_at;
-		$response->slug = $this->slug;
-		$response->plugin_name  = $this->pluginData['Name'];
+		$response->slug = $this->plugin_slug;
+		$response->plugin_name  = $this->plugin_data['Name'];
 		$response->version = $this->api_result->tag_name;
-		$response->author = $this->pluginData['AuthorName'];
-		$response->homepage = $this->pluginData['PluginURI'];
+		$response->author = $this->plugin_data['AuthorName'];
+		$response->homepage = $this->plugin_data['PluginURI'];
 
 		// This is our release download zip file
 		$downloadLink = false; // $this->api_result->zipball_url;
 
 		// Include the access token for private GitHub repos
 		// removed for now...
-		// if ( !empty( $this->accessToken ) ) {
+		// if ( !empty( $this->this->access_token ) ) {
 		// 		$downloadLink = add_query_arg(
-		// 			array( 'access_token' => $this->accessToken ),
+		// 			array( 'access_token' => $this->this->access_token ),
 		// 			$downloadLink
 		// 		);
 		// }
@@ -233,7 +236,7 @@ class PluginName {
 
 		// Create tabs in the lightbox
 		$response->sections = array(
-			'description' => $this->pluginData['Description'],
+			// 'description' => $this->plugin_data['Description'], // not sure we're going to need this...
 			'changelog' => class_exists( 'Parsedown' )
 				? Parsedown::instance()->parse( $this->api_result->body )
 				: $this->api_result->body
@@ -267,18 +270,18 @@ class PluginName {
 	// Perform additional actions to successfully install our plugin
 	// probably unnecessary at the moment, but here in case we make a change
 	public function plugin_post_install( $true, $hook_extra, $result ) {
-		$was_activated = is_plugin_active( $this->slug );
+		$was_activated = is_plugin_active( $this->plugin_slug );
 
 		// Since we are hosted in GitHub, our plugin folder would have a dirname of
 		// reponame-tagname change it to our original one:
 		global $wp_filesystem;
-		$plugin_folder = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . dirname( $this->slug );
+		$plugin_folder = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . dirname( $this->plugin_slug );
 		$wp_filesystem->move( $result['destination'], $plugin_folder );
 		$result['destination'] = $plugin_folder;
 
 		// Re-activate plugin if needed
 		if ( $was_activated ) {
-			$activate = activate_plugin( $this->slug );
+			$activate = activate_plugin( $this->plugin_slug );
 		}
 
 		return $result;
