@@ -108,6 +108,10 @@ class PluginName {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'set_plugin_transient' ) );
     add_filter( 'plugins_api', array( $this, 'set_plugin_info' ), 10, 3 );
     add_filter( 'upgrader_post_install', array( $this, 'plugin_post_install' ), 10, 3 );
+		
+		// update message for plugins
+		$folder = basename( dirname( __FILE__ ) );
+		add_filter ( "in_plugin_update_message-{$folder}/{$plugin_file}", array( $this, 'set_plugin_update_message' ) );
 
 		/*
 		 * TODO:
@@ -125,10 +129,15 @@ class PluginName {
 		add_filter( 'TODO', array( $this, 'filter_method_name' ) );
 	}
 
+	public function set_plugin_update_message() {
+    $output = '<strong>Please update the update flow detailed here for updating this plugin.</strong>';
+    return print $output;
+	}
+
 	private function get_repo_release_info() {
 		// Only do this once
 		if ( !empty( $this->api_result ) ) {
-				return;
+			return;
 		}
 
 		// Query the GitHub API
@@ -136,7 +145,7 @@ class PluginName {
 
 		// We need the access token for private repos
 		if ( !empty( $accessToken ) ) {
-			$url = add_query_arg( array( "access_token" => $accessToken ), $url );
+			$url = add_query_arg( array( 'access_token' => $accessToken ), $url );
 		}
 
 		// Get the results
@@ -178,7 +187,7 @@ class PluginName {
 			$obj = new stdClass();
 			$obj->slug = $this->slug;
 			$obj->new_version = $this->api_result->tag_name;
-			$obj->url = $this->pluginData["PluginURI"];
+			$obj->url = $this->pluginData['PluginURI'];
 			$obj->package = false; // $package;
 			$transient->response[$this->slug] = $obj;
 		}
@@ -201,10 +210,10 @@ class PluginName {
 		// Add our plugin information
 		$response->last_updated = $this->api_result->published_at;
 		$response->slug = $this->slug;
-		$response->plugin_name  = $this->pluginData["Name"];
+		$response->plugin_name  = $this->pluginData['Name'];
 		$response->version = $this->api_result->tag_name;
-		$response->author = $this->pluginData["AuthorName"];
-		$response->homepage = $this->pluginData["PluginURI"];
+		$response->author = $this->pluginData['AuthorName'];
+		$response->homepage = $this->pluginData['PluginURI'];
 
 		// This is our release download zip file
 		$downloadLink = false; // $this->api_result->zipball_url;
@@ -213,19 +222,19 @@ class PluginName {
 		// removed for now...
 		// if ( !empty( $this->accessToken ) ) {
 		// 		$downloadLink = add_query_arg(
-		// 			array( "access_token" => $this->accessToken ),
+		// 			array( 'access_token' => $this->accessToken ),
 		// 			$downloadLink
 		// 		);
 		// }
 		// $response->download_link = $downloadLink;
 
 		// We're going to parse the GitHub markdown release notes, include the parser
-		require_once( plugin_dir_path( __FILE__ ) . "lib/Parsedown.php" );
+		require_once( plugin_dir_path( __FILE__ ) . 'lib/Parsedown.php' );
 
 		// Create tabs in the lightbox
 		$response->sections = array(
-			'description' => $this->pluginData["Description"],
-			'changelog' => class_exists( "Parsedown" )
+			'description' => $this->pluginData['Description'],
+			'changelog' => class_exists( 'Parsedown' )
 				? Parsedown::instance()->parse( $this->api_result->body )
 				: $this->api_result->body
 		);
